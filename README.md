@@ -5,6 +5,7 @@ A comprehensive Python-based system for downloading, transcribing, cleaning, and
 ## Features
 
 - **Automated Audio Processing**: Download podcast episodes from RSS feeds using yt-dlp
+- **OPML Import/Export**: Import your podcast subscriptions from any podcast app
 - **High-Quality Transcription**: Support for both local Whisper models and OpenAI's API
 - **AI-Powered Cleaning**: Use Claude, GPT-4, or local Ollama models to clean transcripts
 - **Structured Summarization**: Generate comprehensive summaries with:
@@ -15,6 +16,7 @@ A comprehensive Python-based system for downloading, transcribing, cleaning, and
   - Investment theses and market insights
   - Noteworthy observations
   - Company mentions with details
+- **Weekly Email Digest**: Beautiful HTML emails with summaries sent to your inbox every Saturday
 - **Robust Database**: DuckDB-based storage for metadata, transcripts, and summaries
 - **Batch Processing**: Orchestrated pipeline for processing multiple episodes
 - **Flexible Configuration**: YAML-based config with environment variable support
@@ -92,6 +94,18 @@ WHISPER_MODEL=base  # tiny, base, small, medium, large
 
 ### 7. Configure Podcast Feeds
 
+**Option A: Import from OPML** (recommended if you already use a podcast app)
+
+Export your subscriptions from your podcast app (Apple Podcasts, Overcast, Pocket Casts, etc.) and import:
+
+```bash
+python podripper.py import-opml podcasts.opml
+```
+
+See [OPML Import Guide](docs/OPML_IMPORT.md) for detailed instructions.
+
+**Option B: Manual Configuration**
+
 Edit `config.yaml` and add your podcast feeds:
 
 ```yaml
@@ -103,6 +117,10 @@ feeds:
     url: "https://example.com/feed.xml"
     enabled: true
 ```
+
+### 8. (Optional) Configure Weekly Email
+
+To receive a weekly digest email every Saturday morning, see the [Email Setup Guide](docs/EMAIL_SETUP.md).
 
 ## Usage
 
@@ -141,19 +159,23 @@ python podripper.py process --episode-id 42
 
 ### Management Commands
 
-#### List Feeds
+#### Feed Management
 
 ```bash
+# List all feeds
 python podripper.py list-feeds
-```
 
-#### Add a Feed
-
-```bash
+# Add a feed manually
 python podripper.py add-feed "Podcast Name" "https://feed-url.com/rss"
+
+# Import feeds from OPML (from podcast apps)
+python podripper.py import-opml podcasts.opml
+
+# Export feeds to OPML
+python podripper.py export-opml --output my-feeds.opml
 ```
 
-#### List Episodes
+#### Episode Management
 
 ```bash
 # List all episodes
@@ -168,10 +190,17 @@ python podripper.py list-episodes --status failed
 python podripper.py list-episodes --limit 20
 ```
 
-#### View Statistics
+#### Statistics & Email
 
 ```bash
+# View processing statistics
 python podripper.py stats
+
+# Send weekly digest email
+python podripper.py send-email
+
+# Test email configuration
+python podripper.py test-email
 ```
 
 ## Configuration
@@ -359,13 +388,26 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
 ```
 
-### Scheduled Processing
+### Scheduled Processing & Weekly Emails
 
-Set up a cron job to run daily:
+Use the included setup script for easy automation:
 
 ```bash
-# Add to crontab (crontab -e)
+./setup_cron.sh
+```
+
+This will help you set up:
+- **Daily processing**: Automatically sync and process new episodes (2 AM daily)
+- **Weekly email digest**: Send summary emails every Saturday morning (8 AM)
+
+Or manually add to crontab (`crontab -e`):
+
+```bash
+# Daily podcast processing at 2 AM
 0 2 * * * cd /path/to/podripper && /path/to/venv/bin/python podripper.py run
+
+# Weekly email digest every Saturday at 8 AM
+0 8 * * SAT cd /path/to/podripper && /path/to/venv/bin/python podripper.py send-email
 ```
 
 ## Troubleshooting

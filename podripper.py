@@ -13,6 +13,8 @@ from rich.table import Table
 
 from src.utils import ConfigManager, setup_logging
 from src.orchestrator import PodcastOrchestrator
+from src.audio import OPMLParser
+from src.email import EmailSender, WeeklySummaryGenerator
 
 
 console = Console()
@@ -238,6 +240,178 @@ def list_episodes(ctx, status, limit):
 
 
 @cli.command()
+@click.argument('opml_file', type=click.Path(exists=True))
+@click.option('--enable-all/--no-enable', default=True, help='Enable all imported feeds')
+@click.pass_context
+def import_opml(ctx, opml_file, enable_all):
+    """Import podcast feeds from an OPML file."""
+    orchestrator = ctx.obj['orchestrator']
+
+    console.print(f"[bold blue]Importing feeds from {opml_file}...[/bold blue]")
+
+    # Parse OPML
+    feeds = OPMLParser.parse_opml(opml_file)
+
+    if not feeds:
+        console.print("[red]✗ Failed to parse OPML file or no feeds found[/red]")
+        sys.exit(1)
+
+    # Validate feeds
+    valid_feeds = OPMLParser.validate_feeds(feeds)
+
+    console.print(f"Found {len(valid_feeds)} valid feeds\n")
+
+    # Add feeds to database
+    added_count = 0
+    skipped_count = 0
+
+    for feed in valid_feeds:
+        feed_id = orchestrator.db.add_feed(
+            name=feed['name'],
+            url=feed['url'],
+            enabled=enable_all
+        )
+
+        if feed_id:
+            console.print(f"[green]✓ Added:[/green] {feed['name']}")
+            added_count += 1
+        else:
+            console.print(f"[yellow]⊙ Exists:[/yellow] {feed['name']}")
+            skipped_count += 1
+
+    console.print(f"\n[bold]Summary:[/bold]")
+    console.print(f"  Added: {added_count}")
+    console.print(f"  Skipped (already exists): {skipped_count}")
+
+
+@cli.command()
+@click.option('--output', '-o', default='feeds.opml', help='Output OPML file path')
+@click.pass_context
+def export_opml(ctx, output):
+    """Export podcast feeds to an OPML file."""
+    orchestrator = ctx.obj['orchestrator']
+
+    console.print("[bold blue]Exporting feeds to OPML...[/bold blue]")
+
+    feeds = orchestrator.db.get_enabled_feeds()
+
+    if not feeds:
+        console.print("[yellow]No enabled feeds to export[/yellow]")
+        sys.exit(1)
+
+    # Convert to OPML format
+    opml_feeds = [
+        {'name': f['name'], 'url': f['url']}
+        for f in feeds
+    ]
+
+    # Export
+    success = OPMLParser.export_opml(opml_feeds, output)
+
+    if success:
+        console.print(f"[green]✓ Exported {len(feeds)} feeds to {output}[/green]")
+    else:
+        console.print(f"[red]✗ Failed to export OPML[/red]")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--days', default=7, help='Number of days to include in digest')
+@click.option('--test', is_flag=True, help='Send test email')
+@click.pass_context
+def send_email(ctx, days, test):
+    """Send weekly podcast digest email."""
+    config = ctx.obj['config']
+    orchestrator = ctx.obj['orchestrator']
+
+    # Check if email is configured
+    if not config.env['email_to'] or not config.env['smtp_username']:
+        console.print("[red]✗ Email not configured. Please set EMAIL_TO and SMTP_USERNAME in .env[/red]")
+        sys.exit(1)
+
+    console.print("[bold blue]Generating weekly email digest...[/bold blue]")
+
+    # Initialize email components
+    email_sender = EmailSender(
+        smtp_server=config.env['smtp_server'],
+        smtp_port=config.env['smtp_port'],
+        username=config.env['smtp_username'],
+        password=config.env['smtp_password'],
+        from_email=config.env['email_from'],
+        use_tls=True
+    )
+
+    summary_generator = WeeklySummaryGenerator(orchestrator.db)
+
+    # Get episodes
+    episodes = summary_generator.get_weekly_episodes(days=days)
+
+    if not episodes:
+        console.print(f"[yellow]No episodes processed in the last {days} days[/yellow]")
+        if not test:
+            sys.exit(0)
+
+    console.print(f"Found {len(episodes)} episodes to include")
+
+    # Generate email content
+    include_full = config.config.email.include_full_summaries
+    html_body = summary_generator.generate_html_email(episodes, include_full_summaries=include_full)
+    text_body = summary_generator.generate_text_email(episodes)
+
+    # Send email
+    console.print(f"Sending email to {config.env['email_to']}...")
+
+    success = email_sender.send_email(
+        to_email=config.env['email_to'],
+        subject=config.env['email_subject'] + (" (Test)" if test else ""),
+        body_html=html_body,
+        body_text=text_body
+    )
+
+    if success:
+        console.print("[green]✓ Email sent successfully[/green]")
+    else:
+        console.print("[red]✗ Failed to send email[/red]")
+        sys.exit(1)
+
+
+@cli.command()
+@click.pass_context
+def test_email(ctx):
+    """Test email configuration."""
+    config = ctx.obj['config']
+
+    console.print("[bold blue]Testing email configuration...[/bold blue]")
+
+    # Check configuration
+    if not config.env['smtp_username'] or not config.env['smtp_password']:
+        console.print("[red]✗ SMTP credentials not configured in .env[/red]")
+        sys.exit(1)
+
+    # Initialize email sender
+    email_sender = EmailSender(
+        smtp_server=config.env['smtp_server'],
+        smtp_port=config.env['smtp_port'],
+        username=config.env['smtp_username'],
+        password=config.env['smtp_password'],
+        from_email=config.env['email_from'],
+        use_tls=True
+    )
+
+    # Test connection
+    success = email_sender.test_connection()
+
+    if success:
+        console.print("[green]✓ Email configuration is valid[/green]")
+        console.print(f"  Server: {config.env['smtp_server']}:{config.env['smtp_port']}")
+        console.print(f"  From: {config.env['email_from']}")
+    else:
+        console.print("[red]✗ Email configuration test failed[/red]")
+        console.print("  Check your SMTP credentials and server settings")
+        sys.exit(1)
+
+
+@cli.command()
 @click.pass_context
 def init(ctx):
     """Initialize configuration files."""
@@ -274,8 +448,9 @@ def init(ctx):
     console.print("\n[bold]Next steps:[/bold]")
     console.print("1. Edit .env and add your API keys")
     console.print("2. Edit config.yaml and configure your podcast feeds")
-    console.print("3. Run: python podripper.py sync")
-    console.print("4. Run: python podripper.py process")
+    console.print("3. Or import feeds: python podripper.py import-opml your_feeds.opml")
+    console.print("4. Run: python podripper.py sync")
+    console.print("5. Run: python podripper.py process")
 
 
 if __name__ == '__main__':

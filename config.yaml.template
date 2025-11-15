@@ -78,3 +78,17 @@ schedule:
 
   # Cron expression (daily at 2 AM)
   cron: "0 2 * * *"
+
+# Email Settings
+email:
+  # Enable weekly email digest
+  enabled: false
+
+  # Send email on Saturday morning at 8 AM
+  schedule: "0 8 * * SAT"
+
+  # Number of days to include in weekly digest
+  days_to_include: 7
+
+  # Include full summaries or just highlights
+  include_full_summaries: false

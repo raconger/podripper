@@ -61,6 +61,14 @@ class ScheduleConfig(BaseModel):
     cron: str = "0 2 * * *"
 
 
+class EmailConfig(BaseModel):
+    """Email settings."""
+    enabled: bool = False
+    schedule: str = "0 8 * * SAT"
+    days_to_include: int = 7
+    include_full_summaries: bool = False
+
+
 class Config(BaseModel):
     """Main configuration."""
     feeds: list[FeedConfig] = Field(default_factory=list)
@@ -70,6 +78,7 @@ class Config(BaseModel):
     cleaning: CleaningConfig = Field(default_factory=CleaningConfig)
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
 
 
 class ConfigManager:
@@ -142,6 +151,16 @@ class ConfigManager:
             # Logging
             'log_level': os.getenv('LOG_LEVEL', 'INFO'),
             'log_file': os.getenv('LOG_FILE', 'data/podripper.log'),
+
+            # Email
+            'email_enabled': os.getenv('EMAIL_ENABLED', 'false').lower() == 'true',
+            'smtp_server': os.getenv('SMTP_SERVER', 'smtp.gmail.com'),
+            'smtp_port': int(os.getenv('SMTP_PORT', '587')),
+            'smtp_username': os.getenv('SMTP_USERNAME', ''),
+            'smtp_password': os.getenv('SMTP_PASSWORD', ''),
+            'email_from': os.getenv('EMAIL_FROM', ''),
+            'email_to': os.getenv('EMAIL_TO', ''),
+            'email_subject': os.getenv('EMAIL_SUBJECT', 'Your Weekly Podcast Digest'),
         }
 
     def get_llm_api_key(self, provider: Optional[str] = None) -> Optional[str]:
