@@ -1,0 +1,80 @@
+# Podcast RSS Feeds to Monitor
+feeds:
+  - name: "Lex Fridman Podcast"
+    url: "https://lexfridman.com/feed/podcast/"
+    enabled: true
+  - name: "Invest Like the Best"
+    url: "http://investorfieldguide.libsyn.com/rss"
+    enabled: true
+  - name: "All-In Podcast"
+    url: "https://feeds.megaphone.fm/allin"
+    enabled: false
+
+# Processing Settings
+processing:
+  # Maximum number of episodes to process per run
+  max_episodes_per_run: 5
+
+  # Process episodes from newest to oldest
+  newest_first: true
+
+  # Skip episodes older than X days (0 = no limit)
+  max_age_days: 30
+
+  # Concurrent processing (1 = sequential)
+  concurrent_workers: 1
+
+# Audio Settings
+audio:
+  # Audio format to download
+  format: "mp3"
+
+  # Audio quality (best, good, medium)
+  quality: "good"
+
+  # Delete audio after successful transcription
+  delete_after_transcription: false
+
+# Transcription Settings
+transcription:
+  # Language (auto-detect if null)
+  language: null
+
+  # Enable word-level timestamps
+  word_timestamps: false
+
+  # Temperature for transcription (0-1)
+  temperature: 0.0
+
+# LLM Settings for Cleaning
+cleaning:
+  # Model to use for transcript cleaning
+  model: "claude-3-5-sonnet-20241022"  # or gpt-4-turbo
+
+  # Temperature (0-1)
+  temperature: 0.3
+
+  # Max tokens
+  max_tokens: 4000
+
+# Summarization Settings
+summarization:
+  # Model to use for summary generation
+  model: "claude-3-5-sonnet-20241022"  # or gpt-4-turbo
+
+  # Temperature (0-1)
+  temperature: 0.5
+
+  # Max tokens
+  max_tokens: 4000
+
+  # Output format (markdown, json, both)
+  output_format: "both"
+
+# Schedule (cron-like)
+schedule:
+  # Enable scheduled processing
+  enabled: false
+
+  # Cron expression (daily at 2 AM)
+  cron: "0 2 * * *"
