@@ -6,9 +6,16 @@ SCHEMA_VERSION = 1
 
 # SQL statements for creating tables
 CREATE_TABLES = """
+-- Sequences for auto-incrementing IDs
+CREATE SEQUENCE IF NOT EXISTS seq_feeds_id START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_episodes_id START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_transcripts_id START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_summaries_id START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_processing_logs_id START 1;
+
 -- Podcast feeds table
 CREATE TABLE IF NOT EXISTS feeds (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_feeds_id'),
     name VARCHAR NOT NULL,
     url VARCHAR NOT NULL UNIQUE,
     enabled BOOLEAN DEFAULT true,
@@ -18,7 +25,7 @@ CREATE TABLE IF NOT EXISTS feeds (
 
 -- Episodes table
 CREATE TABLE IF NOT EXISTS episodes (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_episodes_id'),
     feed_id INTEGER NOT NULL,
     title VARCHAR NOT NULL,
     description TEXT,
@@ -47,7 +54,7 @@ CREATE TABLE IF NOT EXISTS processing_status (
 
 -- Transcripts table (stores actual content)
 CREATE TABLE IF NOT EXISTS transcripts (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_transcripts_id'),
     episode_id INTEGER NOT NULL,
     raw_text TEXT,
     cleaned_text TEXT,
@@ -60,7 +67,7 @@ CREATE TABLE IF NOT EXISTS transcripts (
 
 -- Summaries table
 CREATE TABLE IF NOT EXISTS summaries (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_summaries_id'),
     episode_id INTEGER NOT NULL,
     host_and_guest TEXT,
     comprehensive_summary TEXT,
@@ -76,7 +83,7 @@ CREATE TABLE IF NOT EXISTS summaries (
 
 -- Processing logs
 CREATE TABLE IF NOT EXISTS processing_logs (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('seq_processing_logs_id'),
     episode_id INTEGER,
     stage VARCHAR NOT NULL, -- download, transcribe, clean, summarize
     status VARCHAR NOT NULL, -- success, error, warning
