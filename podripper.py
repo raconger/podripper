@@ -242,14 +242,20 @@ def list_episodes(ctx, status, limit):
 @cli.command()
 @click.argument('opml_file', type=click.Path(exists=True))
 @click.option('--enable-all/--no-enable', default=True, help='Enable all imported feeds')
+@click.option('--verbose', '-v', is_flag=True, help='Show each feed as it is imported')
 @click.pass_context
-def import_opml(ctx, opml_file, enable_all):
-    """Import podcast feeds from an OPML file."""
+def import_opml(ctx, opml_file, enable_all, verbose):
+    """Import podcast feeds from an OPML file.
+
+    Uses optimized batch import for better performance with large OPML files.
+    """
+    import time
     orchestrator = ctx.obj['orchestrator']
 
     console.print(f"[bold blue]Importing feeds from {opml_file}...[/bold blue]")
 
     # Parse OPML
+    start_time = time.time()
     feeds = OPMLParser.parse_opml(opml_file)
 
     if not feeds:
@@ -258,30 +264,32 @@ def import_opml(ctx, opml_file, enable_all):
 
     # Validate feeds
     valid_feeds = OPMLParser.validate_feeds(feeds)
+    parse_time = time.time() - start_time
 
-    console.print(f"Found {len(valid_feeds)} valid feeds\n")
+    console.print(f"Found {len(valid_feeds)} valid feeds (parsed in {parse_time*1000:.0f}ms)\n")
 
-    # Add feeds to database
-    added_count = 0
-    skipped_count = 0
+    # Use optimized batch import for better performance
+    start_time = time.time()
+    result = orchestrator.db.add_feeds_batch(valid_feeds, enabled=enable_all)
+    import_time = time.time() - start_time
 
-    for feed in valid_feeds:
-        feed_id = orchestrator.db.add_feed(
-            name=feed['name'],
-            url=feed['url'],
-            enabled=enable_all
-        )
-
-        if feed_id:
-            console.print(f"[green]✓ Added:[/green] {feed['name']}")
-            added_count += 1
-        else:
-            console.print(f"[yellow]⊙ Exists:[/yellow] {feed['name']}")
-            skipped_count += 1
+    # Show individual feed status if verbose
+    if verbose:
+        # Re-check each feed to show status (for verbose output only)
+        for feed in valid_feeds:
+            existing = orchestrator.db.get_enabled_feeds()
+            feed_urls = [f['url'] for f in existing]
+            if feed['url'] in feed_urls:
+                console.print(f"[green]✓[/green] {feed['name']}")
 
     console.print(f"\n[bold]Summary:[/bold]")
-    console.print(f"  Added: {added_count}")
-    console.print(f"  Skipped (already exists): {skipped_count}")
+    console.print(f"  Added: {result['added']}")
+    console.print(f"  Skipped/Updated: {result['skipped']}")
+    console.print(f"  Import time: {import_time*1000:.0f}ms")
+
+    if len(valid_feeds) >= 50:
+        per_feed_ms = import_time / len(valid_feeds) * 1000
+        console.print(f"  Performance: {per_feed_ms:.1f}ms per feed")
 
 
 @cli.command()

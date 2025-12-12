@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Test Podcast Subscriptions</title>
+    <dateCreated>Thu, 12 Dec 2024 10:00:00 GMT</dateCreated>
+  </head>
+  <body>
+    <!-- Flat feeds -->
+    <outline text="Lex Fridman Podcast" title="Lex Fridman Podcast" type="rss"
+             xmlUrl="https://lexfridman.com/feed/podcast/"
+             htmlUrl="https://lexfridman.com/"
+             description="Conversations about the nature of intelligence, consciousness, love, and power." />
+
+    <outline text="Invest Like the Best" type="rss"
+             xmlUrl="http://investorfieldguide.libsyn.com/rss"
+             htmlUrl="http://investorfieldguide.com" />
+
+    <!-- Nested in category -->
+    <outline text="Technology" title="Technology">
+      <outline text="All-In Podcast" type="rss"
+               xmlUrl="https://feeds.megaphone.fm/allin"
+               description="Industry veterans, bestiesshare their thoughts on what's happening in tech." />
+
+      <outline text="a]The Tim Ferriss Show" type="rss"
+               xmlUrl="https://rss.art19.com/tim-ferriss-show" />
+
+      <!-- Deeply nested -->
+      <outline text="AI and ML">
+        <outline text="Practical AI" type="rss"
+                 xmlUrl="https://changelog.com/practicalai/feed"
+                 htmlUrl="https://changelog.com/practicalai" />
+      </outline>
+    </outline>
+
+    <!-- Another category -->
+    <outline text="Business and Finance" title="Business">
+      <outline text="Planet Money" type="rss"
+               xmlUrl="https://feeds.npr.org/510289/podcast.xml"
+               htmlUrl="https://www.npr.org/planetmoney" />
+
+      <outline text="How I Built This" type="rss"
+               xmlUrl="https://feeds.npr.org/510313/podcast.xml" />
+    </outline>
+
+    <!-- Edge cases -->
+    <outline text="Category without feeds">
+      <outline text="Empty subcategory" />
+    </outline>
+
+    <!-- Feed with link type -->
+    <outline text="The Knowledge Project" type="link"
+             xmlUrl="https://theknowledgeproject.libsyn.com/rss" />
+
+    <!-- Feed without type but has xmlUrl -->
+    <outline text="My First Million"
+             xmlUrl="https://feeds.megaphone.fm/myfirstmillion" />
+  </body>
+</opml>
